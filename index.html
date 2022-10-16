@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<!-- the HTTP server keeps returning the last-modified date from the
+	     filesystem, but this can still be useful: -->
+	<meta http-equiv="Last-Modified" content="Sat, 7 May 2022 18:00:00 CET" />
+	<title>Glen Mével</title>
+	<style>
+		blockquote {
+			text-align: justify;
+			max-width: 50em;
+		}
+		span.email-string {
+			font-family: monospace;
+			color: #800000;
+			background-color: white;
+		}
+		span.email-var {
+			font-family: serif;
+			font-style: italic;
+			color: black;
+			background-color: white;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h1>Glen Mével</h1>
+
+	<p>
+		Contact:
+		(λ <span class="email-var">x</span> <span class="email-var">y</span> .
+		<span class="email-string">“<span class="email-var">x</span>.<span class="email-var">y</span>@inria.fr”</span>)
+		<span class="email-string">“glen”</span>
+		<span class="email-string">“mevel”</span>.
+	</p>
+
+	<p>
+		PhD student (2018–2022),
+		team <a href="..">Cambium</a>
+		at <a href="https://www.inria.fr/en/">Inria</a> Paris
+		&amp; <a href="https://lmf.cnrs.fr">Laboratoire Méthodes Formelles</a>
+		at <a href="https://www.ens-paris-saclay.fr/">ENS Paris-Saclay</a>
+		(successor to team <a href="https://vals.lri.fr">VALS</a>
+		at <a href="https://www.lri.fr">LRI</a>),
+		France.
+	</p>
+
+	<p>
+		With my advisors
+		<a href="../~fpottier/">François Pottier</a> (Inria)
+		and <a href="https://jhjourdan.mketjh.fr">Jacques‐Henri Jourdan</a>
+		(LMF),
+		we aim at establishing a program logic for proving correctness of
+		<a href="http://ocamllabs.io/doc/multicore.html">Multicore OCaml</a>
+		programs. For that, we are using the
+		<a href="https://coq.inria.fr">Coq</a> proof assistant and the
+		<a href="https://iris-project.org">Iris</a> separation logic.
+	</p>
+
+	<p>
+		Research interests: functional programming, proof of programs,
+		separation logic, concurrent programming…
+	</p>
+
+	<h2>Talks</h2>
+
+	<p>
+		May 2022:
+		I gave a talk about time debits at the second Iris workshop.
+		<a href="slides/mevel_2022-05_iris_time-debits.pdf">[slides]</a>
+	</p>
+
+	<h2>Publications</h2>
+
+	<dl>
+
+		<dt>
+			Glen Mével and Jacques-Henri Jourdan.
+			<strong>Formal Verification of a Concurrent Bounded Queue
+				in a Weak Memory Model</strong>
+			<em>Proceedings of the ACM on Programming Languages</em>, 5 (ICFP),
+			August 2021.
+			<a href="papers/mevel-jourdan_2021_cosmo-queue.pdf">[PDF]</a>
+			<a href="slides/mevel_2021-08_icfp_cosmo-queue.pdf">[slides]</a>
+			<a href="slides/mevel_2021-08_icfp_cosmo-queue.mp4.html">[video]</a>
+			<a href="https://gitlab.inria.fr/gmevel/cosmo">[Coq proofs]</a>
+			<a href="https://zenodo.org/record/5064045">[Zenodo pub. with proof artifact]</a>
+		</dt>
+		<dd>
+			<blockquote>
+				We use Cosmo, a modern concurrent separation logic, to formally
+				specify and verify an implementation of a multiple-producer
+				multiple-consumer concurrent queue in the setting of the
+				Multicore OCaml weak memory model. We view this result as a
+				demonstration and experimental verification of the manner in
+				which Cosmo allows modular and formal reasoning about advanced
+				concurrent data structures. In particular, we show how the joint
+				use of logically atomic triples and of Cosmo's views makes it
+				possible to describe precisely in the specification the
+				interaction between the queue library and the weak memory model.
+			</blockquote>
+		</dd>
+
+		<dt>
+			Glen Mével, Jacques-Henri Jourdan, and François Pottier.
+			<strong>Cosmo: A Concurrent Separation Logic for Multicore OCaml</strong>.
+			<em>Proceedings of the ACM on Programming Languages</em>, 4 (ICFP),
+			August 2020.
+			<a href="papers/mevel-jourdan-pottier_2020_cosmo.pdf">[PDF]</a>
+			<a href="slides/mevel_2020-08_icfp_cosmo.pdf">[slides]</a>
+			<a href="slides/mevel_2020-08_icfp_cosmo.mp4.html">[video]</a>
+			<a href="https://gitlab.inria.fr/gmevel/cosmo">[Coq proofs]</a>
+			<a href="https://dl.acm.org/do/10.1145/3410229/full/">[ACM-archived proof artifact]</a>
+		</dt>
+		<dd>
+			<blockquote>
+				Multicore OCaml extends OCaml with support for shared-memory
+				concurrency. It is equipped with a weak memory model, for which
+				an operational semantics has been published. This begs the
+				question: what reasoning rules can one rely upon while writing
+				or verifying Multicore OCaml code? To answer it, we instantiate
+				Iris, a modern descendant of Concurrent Separation Logic, for
+				Multicore OCaml. This yields a low-level program logic whose
+				reasoning rules expose the details of the memory model. On top
+				of it, we build a higher-level logic, Cosmo, which trades off
+				some expressive power in return for a simple set of reasoning
+				rules that allow accessing nonatomic locations in a
+				data-race-free manner, exploiting the sequentially-consistent
+				behavior of atomic locations, and exploiting the release/acquire
+				behavior of atomic locations. Cosmo allows both low-level
+				reasoning, where the details of the Multicore OCaml memory model
+				are apparent, and high-level reasoning, which is independent of
+				this memory model. We illustrate this claim via a number of case
+				studies: we verify several implementations of locks with respect
+				to a classic, memory-model-independent specification. Thus, a
+				coarse-grained application that uses locks as the sole means of
+				synchronization can be verified in the
+				Concurrent-Separation-Logic fragment of Cosmo, without any
+				knowledge of the weak memory model.
+			</blockquote>
+		</dd>
+
+		<dt>
+			Glen Mével, Jacques-Henri Jourdan, and François Pottier.
+			<strong>Time credits and time receipts in Iris</strong>.
+			In Luis Caires, editor,
+			<em>European Symposium on Programming (ESOP)</em>, volume 11423 of
+			<em>Lecture Notes in Computer Science</em>.
+			Springer, April 2019.
+			<a href="papers/mevel-jourdan-pottier_2019_time-iris.pdf">[PDF]</a>
+			<a href="slides/mevel_2019-04_esop19_time-receipts.pdf">[slides]</a>
+			<a href="https://gitlab.inria.fr/gmevel/iris-time-proofs">[Coq proofs]</a>
+		</dt>
+		<dd>
+			<blockquote>
+				We present a machine-checked extension of the program logic Iris
+				with time credits and time receipts, two dual means of reasoning
+				about time.
+				Whereas time credits are used to establish an upper bound on a
+				program's execution time, time receipts can be used to establish
+				a lower bound. More strikingly, time receipts can be used to
+				prove that certain undesirable events — such as integer
+				overflows — cannot occur until a very long time has elapsed. We
+				present several machine-checked applications of time credits and
+				time receipts, including an application where both concepts are
+				exploited.
+			</blockquote>
+		</dd>
+	</dl>
+
+</body>
+
+</html>
