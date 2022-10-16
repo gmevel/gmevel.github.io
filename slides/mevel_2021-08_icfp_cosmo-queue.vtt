@@ -1,0 +1,592 @@
+WEBVTT
+
+00:01.000 --> 00:03.000
+Hello, I’m Glen Mével and today I will show you
+
+00:03.000 --> 00:06.250
+how to specify a concurrent
+datastructure under weak memory.
+
+00:07.280 --> 00:09.440
+Nowadays concurrency is everywhere,
+
+00:09.440 --> 00:12.800
+and all real-world shared memories
+have some counter-intuitive behaviors.
+
+00:12.800 --> 00:16.160
+So not only do we want to verify
+concurrent data structures,
+
+00:16.160 --> 00:21.920
+but we want to verify them against an actual model
+of memory — what we call a “weak” memory model.
+
+00:23.440 --> 00:29.040
+Our paper’s contribution is a specification
+and a proof of a particular fine-grained
+
+00:30.240 --> 00:33.920
+concurrent queue, in the weak
+memory model of Multicore OCaml.
+
+00:35.360 --> 00:38.800
+In this talk, we won’t cover the
+proof nor the implementation,
+
+00:38.800 --> 00:43.320
+but we’ll see how to write a usable spec for it.
+
+00:44.560 --> 00:49.520
+Concurrency poses a number of challenges.
+We want to specify a data structure,
+
+00:49.520 --> 00:55.600
+such that we allow sharing it between threads.
+So one challenge is with shared ownership and,
+
+00:55.600 --> 01:02.640
+as we’ll see, solving this involves some form
+of atomicity. The operations of a concurrent
+
+01:02.640 --> 01:09.200
+data structure must behave as if they were atomic,
+and it’s something we must specify, somehow.
+
+01:11.440 --> 01:16.560
+Another challenge is with weak memory. With
+weak memory, you need to be explicit about how
+
+01:17.600 --> 01:22.400
+threads synchronize. So specs must
+expose useful synchronizations.
+
+01:23.040 --> 01:28.160
+And often, fine-grained implementations offer
+less synchronizations than a lock-based one.
+
+01:29.600 --> 01:32.160
+We will tackle these challenges by using Cosmo,
+
+01:32.160 --> 01:34.880
+which is our concurrent program
+logic for Multicore OCaml.
+
+01:36.400 --> 01:40.720
+Just to get familiar with notations, let’s
+start with a non-concurrent specification.
+
+01:41.920 --> 01:49.520
+We have 3 operations: ‘make’, ‘enqueue’,  ‘dequeue’.
+We specify them using Hoare triples.
+
+01:49.520 --> 01:54.800
+A triple is made of a precondition formula,
+a program fragment and a postcondition formula.
+
+01:56.560 --> 02:01.440
+We have a representation predicate ‘IsQueue‘,
+which asserts that ‘q’ is a memory location
+
+02:01.440 --> 02:08.240
+storing a well-formed queue data structure whose
+items are, in order, the values in the given list.
+
+02:10.160 --> 02:15.360
+We are in separation logic, so conjunction
+is denoted with an asterisk ‘∗’, and the
+
+02:15.360 --> 02:21.120
+assertion ‘IsQueue’ is not duplicable; rather,
+it asserts the unique ownership of the queue.
+
+02:23.200 --> 02:28.320
+Now let’s enter concurrency. For now, let’s
+assume “sequential consistency”; that is,
+
+02:28.320 --> 02:32.080
+a program always behaves as some
+interleaving of its threads.
+
+02:34.000 --> 02:37.120
+We want to specify a queue
+which can be used concurrently.
+
+02:37.920 --> 02:45.200
+Can we simply keep the spec that we just saw?
+Well, this spec is still valid; but to use it,
+
+02:45.920 --> 02:50.080
+a thread needs the unique ownership of the queue,
+so that effectively prevents concurrent uses.
+
+02:50.720 --> 02:52.720
+And it makes sense, because there is no reason to
+
+02:52.720 --> 02:56.800
+believe that the data structure is
+thread-safe… unless we specify it.
+
+02:58.160 --> 03:01.840
+So let’s consider a queue that
+<i>is</i> thread-safe. To see how
+
+03:02.480 --> 03:06.960
+to reflect thread-safety in the spec, let’s
+adopt for a moment the point of view of the user.
+
+03:07.680 --> 03:14.480
+As a user of a concurrent data structure, we
+want to share its ownership among threads.
+
+03:14.480 --> 03:19.760
+In a concurrent separation logic, such as Iris,
+we can do it by putting it in an “invariant”.
+
+03:21.440 --> 03:26.800
+An invariant is an assertion which holds at all
+times, and in which we can put whatever resource
+
+03:26.800 --> 03:33.440
+we want. Then, it is the invariant itself which
+owns the resource and any thread can access it.
+
+03:34.560 --> 03:40.080
+To access it, we “open” the invariant
+around a program fragment ‘e’; that is,
+
+03:41.120 --> 03:45.840
+before running ‘e’ we obtain the contents of
+the invariant, and afterwards we return it.
+
+03:47.520 --> 03:51.040
+Now the issue: for soundness
+in the face of concurrency,
+
+03:51.040 --> 03:55.120
+we can only open an invariant for
+at most one step of execution.
+
+03:57.360 --> 04:02.320
+This is a problem because the number of steps is
+a low-level implementation detail, and as a user,
+
+04:02.320 --> 04:07.680
+we have no idea whether the operations
+complete in one step — and it’s unlikely.
+
+04:07.680 --> 04:12.800
+So the user cannot use a queue-sharing invariant,
+around the specs that we have written earlier.
+
+04:14.800 --> 04:18.800
+But doing so would be reasonable,
+because a concurrent queue
+
+04:18.800 --> 04:23.680
+has to be implemented in such a way that its
+operations <i>look</i> atomic to the user.
+
+04:25.600 --> 04:29.520
+For this, Iris provides us a notion
+of “logically atomic triples”
+
+04:30.080 --> 04:35.120
+(which we’ll denote with angle brackets,
+instead of curly brackets). It’s something
+
+04:35.120 --> 04:42.320
+we can define in the logic, I won’t show how,
+but the key point is this couple of properties.
+
+04:43.680 --> 04:47.520
+First, a logically atomic triple
+entails the regular triple.
+
+04:49.680 --> 04:55.920
+Second, we can open invariants around it freely.
+This is a way of stating that ‘e’ is
+
+04:55.920 --> 05:01.840
+“logically atomic” or, more formally, that
+there is a step in the execution of ‘e’
+
+05:02.640 --> 05:06.960
+such that ‘e’ behaves as if
+everything happened during that step.
+
+05:08.320 --> 05:12.640
+It is this step which satisfies the Hoare
+triple with ‘P’ and ‘Q’. So ‘P’ and ‘Q’ need
+
+05:12.640 --> 05:18.160
+not hold at the start and end of ‘e’, but only
+just before and just after the atomic step.
+
+05:19.440 --> 05:24.960
+Because of this, we need a binder to be able to
+name things which we only know during the atomic
+
+05:24.960 --> 05:30.960
+step, when we actually open the invariant.
+So here, ‘x’ is bound in both ‘P’ and ‘Q’.
+
+05:34.080 --> 05:40.080
+Fine! With logical atomicity, let’s strenghten
+our previous spec for concurrent uses.
+
+05:41.520 --> 05:47.360
+The spec of ‘make’ does not change,
+because we do not need it to be atomic.
+
+05:49.520 --> 05:52.720
+For ‘enqueue’ and ‘dequeue’,
+we do the following changes:
+
+05:52.720 --> 05:56.880
+* we replace the regular triples
+with logically atomic triples;
+
+05:56.880 --> 06:00.880
+* we bind the queue state
+explicitely in the triples;
+
+06:01.760 --> 06:02.400
+and that’s it.
+
+06:07.040 --> 06:13.600
+We now have a usable spec for a concurrent queue,
+but that was under sequential consistency.
+
+06:15.040 --> 06:18.640
+Sequential consistency is an unrealistic
+assumption for the modern world,
+
+06:20.560 --> 06:23.200
+so we have to embrace weaker models of memory.
+
+06:24.720 --> 06:30.080
+A well-known one is that of C11, and here we
+are interested in that of Multicore OCaml.
+
+06:30.720 --> 06:37.440
+A way of describing such models is by saying that
+each thread has its own <i>view</i> of the shared state.
+
+06:37.440 --> 06:43.360
+For Multicore OCaml, this has been made
+formal by people at Cambridge (reference on slide)
+
+06:43.360 --> 06:48.080
+and, based on this, we have built Cosmo,
+a program logic for Multicore OCaml.
+
+06:51.360 --> 06:55.520
+A few words about Cosmo. Cosmo is based on Iris,
+
+06:55.520 --> 06:59.680
+hence we inherit all of its features:
+separation logic and so on.
+
+07:00.320 --> 07:04.240
+Its distinctive trait is that in
+general, assertions are “subjective”:
+
+07:05.120 --> 07:07.840
+we are reasoning under an implicit ambient view,
+
+07:08.880 --> 07:14.720
+which represents the current view of the
+current thread, and assertions may depend on it.
+
+07:16.000 --> 07:19.440
+For instance, ‘x pointsto 42’ is subjective:
+
+07:20.000 --> 07:25.600
+maybe <i>we</i> see that ‘x’ is storing 42
+because we have written it, but our write has
+
+07:25.600 --> 07:29.680
+not been propagated to other threads yet,
+and <i>they</i> still see an earlier value for ‘x’.
+
+07:31.680 --> 07:37.520
+With that said, a limitation with subjective
+assertions is that invariants are still available
+
+07:37.520 --> 07:45.200
+to all threads. So the assertions that they store
+cannot depend on the view of a specific thread.
+
+07:45.200 --> 07:47.600
+They are restricted to “objective” assertions.
+
+07:49.760 --> 07:55.840
+Back to our queue: recall that we want to share
+the queue in an invariant. So, its representation
+
+07:55.840 --> 08:03.840
+predicate must be objective. And we make this
+objectivity requirement a part of the specs.
+
+08:04.640 --> 08:07.200
+Do we need any other modification
+to the previous spec?
+
+08:08.400 --> 08:14.480
+It is still usable in limited cases, but for the
+general case it lacks thread synchronization.
+
+08:15.840 --> 08:21.040
+Let’s consider an example. Thread
+A writes to some memory region,
+
+08:21.040 --> 08:25.920
+then enqueues a pointer to that
+region. Thread B dequeues the pointer.
+
+08:26.960 --> 08:31.840
+Now thread B expects to read the memory
+region in the state in which A has left it.
+
+08:32.800 --> 08:36.000
+But remember that we are in
+weak memory. So it’s not because
+
+08:36.000 --> 08:41.920
+A knows it has written 3 to ‘x[1]’,
+that B knows it too.
+
+08:42.960 --> 08:49.440
+So we want the queue to guarantee that, when
+dequeuing, B learns about all writes known by A.
+
+08:51.120 --> 08:53.760
+It’s a typical “release-acquire” pattern.
+
+08:55.200 --> 09:00.320
+This is a side effect that we
+need, so it must be specified.
+
+09:00.320 --> 09:04.800
+From the logical perspective, the user
+wants to transfer pointsto assertions
+
+09:04.800 --> 09:10.000
+from A to B but, as I said, pointsto
+assertions are subjective, so the user
+
+09:10.000 --> 09:13.840
+cannot simply put them in an invariant.
+We need something more.
+
+09:15.680 --> 09:19.280
+It’s time for me to explain how views
+and synchronization work in Cosmo.
+
+09:20.080 --> 09:24.320
+We have an abstract notion of views. It
+comes equipped with an inclusion relation:
+
+09:25.120 --> 09:27.840
+the larger, the more up-to-date.
+
+09:28.720 --> 09:32.080
+To manipulate views, we have new
+kinds of assertions in the logic.
+
+09:33.600 --> 09:36.880
+First, ‘↑ V‘ means that
+the ambient view contains ‘V’.
+
+09:36.880 --> 09:41.840
+Thus it’s the archetypical subjective assertion.
+
+09:42.800 --> 09:50.400
+Second, ‘P @ V’ where ‘P’ is any assertion,
+means “P with the ambient view fixed to V”.
+
+09:52.480 --> 09:55.840
+‘P @ V’ is objective even if ‘P’ is subjective.
+
+09:57.040 --> 10:00.320
+These assertions satisfy several
+rules, in particular this one:
+
+10:00.880 --> 10:03.840
+any assertion ‘P’ can be decomposed into an
+
+10:03.840 --> 10:08.800
+assertion ‘↑ V’ and an assertion ‘P @ V’,
+for some view ‘V’; and conversely.
+
+10:09.520 --> 10:14.320
+That’s how we can transfer ‘P’
+between threads: we isolate
+
+10:14.880 --> 10:17.840
+all of its subjective knowledge
+into a component ‘↑ V’,
+
+10:18.400 --> 10:23.840
+so that what’s left is an objective assertion
+‘P @ V’, which we can share in an invariant.
+
+10:24.960 --> 10:29.600
+So, to achieve a transfer of ‘P’, we
+just have to transfer view assertions,
+
+10:29.600 --> 10:34.320
+and this has a runtime meaning:
+this is thread synchronization.
+
+10:36.960 --> 10:43.440
+Back to our queue again, we want to say that,
+for each item, there is a synchronization
+
+10:43.440 --> 10:48.400
+— that is, a view transfer —
+from the enqueuer to the dequeuer.
+
+10:50.320 --> 10:54.000
+The idea is to pretend that the queue
+stores the views being transferred.
+
+10:54.880 --> 10:59.920
+So there is now one view for each item, and the
+representation predicate now looks like this.
+
+11:02.400 --> 11:05.440
+If we recall the previous spec,
+it is now augmented with views,
+
+11:06.080 --> 11:08.480
+and the view transfer happens like that.
+
+11:08.480 --> 11:16.320
+The enqueuer pushes its current view into the
+queue, alongside the enqueued item.
+
+11:16.320 --> 11:21.360
+In the pre. we use an assertion ‘↑ V’ for capturing
+the current view — or in fact, any portion of it,
+
+11:21.920 --> 11:24.120
+as chosen by the user of the spec.
+
+11:24.120 --> 11:29.760
+Conversely, the dequeuer pulls the
+view that comes with the item.
+
+11:29.760 --> 11:35.040
+It gets that same ‘↑ V’, which means
+that now its current view includes ‘V’.
+
+11:37.120 --> 11:39.360
+It’s really a release-acquire pattern.
+
+11:41.440 --> 11:45.680
+I’d like to draw your attention
+to something. You may wonder
+
+11:45.680 --> 11:49.520
+how this approach to specification
+compares with refinement.
+
+11:51.360 --> 11:54.480
+In a typical refinement-based
+spec, you would say something like:
+
+11:55.120 --> 11:58.720
+“this queue can be used everywhere we can
+use a naïve queue protected by a lock.”
+
+11:59.920 --> 12:04.240
+But, in weak memory, this spec has
+a shortcoming: the lock induces
+
+12:04.240 --> 12:08.480
+synchronizations between <i>all</i> pairs of
+operations, even though many lock-free queues
+
+12:08.480 --> 12:13.120
+do not guarantee them — because precisely, we
+try to reduce unnecessary synchronizations.
+
+12:14.880 --> 12:19.280
+By contrast, our spec is weaker, for
+instance it does not guarantee any
+
+12:20.240 --> 12:25.840
+dequeuer-to-enqueuer synchronization.
+So we can specify more implementations.
+
+12:29.200 --> 12:33.600
+To recap, I’ve shown several tools for
+reasoning about concurrent programs.
+
+12:33.600 --> 12:37.760
+Invariants are well-known already.
+To use invariants to their full power,
+
+12:37.760 --> 12:43.840
+we need to pay attention to atomicity in specs;
+for that, we have logically atomic triples.
+
+12:45.040 --> 12:50.240
+What’s new is that now, we want to support
+weak memory, and for that, we have views.
+
+12:51.120 --> 12:56.320
+My claim is that the combination of
+these tools works — logical atomicity is
+
+12:56.320 --> 13:01.760
+compatible with weak memory – and it’s
+expressive enough for specifying and proving
+
+13:01.760 --> 13:07.920
+fine-grained concurrent programs,
+while remaining quite natural to use.
+
+13:09.920 --> 13:14.960
+I’ve only talked about specification, but
+there is more in the paper. We have a proof
+
+13:14.960 --> 13:22.240
+of the spec for a non-trivial lock-free queue. It
+demonstrates the benefit of our approach because
+
+13:22.240 --> 13:27.600
+this implementation has less synchronizations
+than a lock-based queue, so it’s not a refinement.
+
+13:28.960 --> 13:32.800
+By the way, at the time we were working
+on that proof, other people were working
+
+13:32.800 --> 13:36.640
+on a refinement proof of a very similar
+data structure, under sequential consistency,
+
+13:37.200 --> 13:39.840
+so you can have a look at their paper too
+(reference on slide).
+
+13:41.120 --> 13:43.600
+We also have a proof of a
+simple client application
+
+13:43.600 --> 13:46.000
+which demonstrates that our spec is usable.
+
+13:47.360 --> 13:50.880
+All of this takes place in Iris, a very
+powerful separation logic framework.
+
+13:50.880 --> 13:55.840
+Last but not least, by the virtue
+of Coq, everything is machine-checked.
+
+13:57.040 --> 14:00.800
+Thank you for your attention!

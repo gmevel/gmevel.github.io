@@ -1,0 +1,1065 @@
+WEBVTT
+
+00:00.800 --> 00:03.000
+Welcome to this talk,
+ I'm Glen Mével, and with
+
+00:03.000 --> 00:04.480
+Jacques-Henri Jourdan
+ and François Pottier,
+
+00:04.480 --> 00:07.320
+we've been working on
+ a concurrent separation logic
+
+00:07.320 --> 00:09.720
+for Multicore OCaml
+ What does that mean?
+
+00:09.720 --> 00:12.840
+Our aim is to verify,
+ fine-grained concurrent programs
+
+00:12.840 --> 00:14.240
+in the setting
+ of the Multicore
+
+00:14.240 --> 00:18.160
+OCaml memory model,
+ which is a weak memory model.
+
+00:18.160 --> 00:20.520
+In this talk,
+ I present a concurrent
+
+00:20.520 --> 00:23.440
+separation logic
+ with a notion of views.
+
+00:25.080 --> 00:27.600
+So a few words about
+ Multicore Ocaml:
+
+00:27.600 --> 00:29.880
+as the name suggests,
+ it is an extension
+
+00:29.880 --> 00:31.440
+of the OCaml
+ programming language
+
+00:31.440 --> 00:34.120
+with support
+ for multicore programming.
+
+00:34.120 --> 00:37.320
+It comes with a weak memory model
+ which has been formalized
+
+00:37.320 --> 00:40.520
+in a paper at PLDI '18,
+ and it features
+
+00:40.520 --> 00:45.520
+two flavors of locations
+ which are dubbed "atomic" and "non-atomic".
+
+00:46.120 --> 00:48.520
+By the way if you're interested
+ in the garbage collector
+
+00:48.520 --> 00:50.920
+of Multicore OCaml,
+ please have a look
+
+00:50.920 --> 00:53.160
+at this other ICFP paper, whose title is
+
+00:53.160 --> 00:56.520
+"Retrofitting
+ Parallelism onto OCaml."
+
+00:57.400 --> 00:59.200
+So what is the challenge here?
+
+00:59.200 --> 01:01.360
+Essentially, the challenge
+ is dealing with
+
+01:01.360 --> 01:04.280
+the weak memory.
+ Under sequential consistency,
+
+01:04.280 --> 01:07.080
+traditional concurrent
+ separation logic
+
+01:07.080 --> 01:10.520
+gives you a points-to assertion,
+ "x points to V"
+
+01:10.520 --> 01:12.920
+which expresses your
+ unique ownership
+
+01:12.920 --> 01:16.120
+of the memory location x
+ and which also
+
+01:16.120 --> 01:19.440
+says which value
+ is stored in x.
+
+01:19.440 --> 01:22.880
+Then you have the usual
+ Hoare-style reasoning rules.
+
+01:22.880 --> 01:25.880
+This assertion
+ gives you ownership of x
+
+01:25.880 --> 01:27.120
+but you may
+ want to share
+
+01:27.120 --> 01:29.680
+this ownership
+ among all threads.
+
+01:29.680 --> 01:33.120
+To do so, an usual solution
+ is to put the assertion
+
+01:33.120 --> 01:35.280
+in an invariant.
+
+01:35.280 --> 01:37.880
+Intuitively an invariant
+ holds at all times,
+
+01:37.880 --> 01:40.520
+and its contents
+ can be accessed equally
+
+01:40.520 --> 01:42.320
+by all threads.
+
+01:42.840 --> 01:45.640
+Here, we can put
+ "x points to something"
+
+01:45.640 --> 01:47.920
+in an invariant
+ (which we denote
+
+01:47.920 --> 01:50.960
+by boxing the assertion),
+ then any thread
+
+01:50.960 --> 01:56.360
+can access x as long as
+ it preserves the invariant.
+
+01:56.360 --> 01:59.680
+Now, what breaks
+ under a weak memory model
+
+01:59.680 --> 02:02.240
+is that each thread
+ now has a different
+
+02:02.240 --> 02:04.960
+view of memory.
+ This notion of view
+
+02:04.960 --> 02:08.360
+is crucial, because it means
+ that some assertions
+
+02:08.360 --> 02:11.560
+like the points-to assertion
+ are only valid
+
+02:11.560 --> 02:14.640
+with respect
+ to the current view of a thread.
+
+02:14.640 --> 02:17.240
+We call these kinds
+ of assertions
+
+02:17.240 --> 02:21.640
+subjective assertions.
+ But on the other hand,
+
+02:21.640 --> 02:24.320
+invariants hold
+ equally for all threads,
+
+02:24.320 --> 02:26.960
+so they can only contain
+ objective assertions
+
+02:26.960 --> 02:32.080
+where by objective
+ we mean non-subjective.
+
+02:32.080 --> 02:35.200
+Then the challenge
+ is to keep a program logic
+
+02:35.200 --> 02:37.880
+which feels simple
+ and natural enough
+
+02:37.880 --> 02:39.960
+but at the same time
+ is able to deal
+
+02:39.960 --> 02:42.160
+with subjectivity,
+ and allows
+
+02:42.160 --> 02:45.320
+subjective assertions
+ to be shared between threads.
+
+02:47.800 --> 02:51.040
+I just spoke about the view
+ of a thread and how it is
+
+02:51.040 --> 02:54.080
+central to the challenge
+ of weak memory,
+
+02:54.080 --> 02:55.960
+but I haven't defined
+ this concept yet,
+
+02:55.960 --> 02:59.360
+so let me do that now.
+ Because of weak memory
+
+02:59.360 --> 03:02.200
+each thread only knows
+ a subset of all writes
+
+03:02.200 --> 03:05.000
+that have happened
+ to the shared memory.
+
+03:05.000 --> 03:09.120
+This affects how
+ a thread reads
+
+03:09.120 --> 03:11.440
+and writes the memory.
+ For example,
+
+03:11.440 --> 03:14.120
+once it has learned
+ about a write,
+
+03:14.120 --> 03:17.440
+it cannot read
+ from earlier writes anymore.
+
+03:17.440 --> 03:19.360
+This is an example
+ of what a weak
+
+03:19.360 --> 03:24.880
+memory model would say you.
+ And this subset of write events,
+
+03:24.880 --> 03:27.120
+we will call it a view.
+ So the view of a thread
+
+03:27.120 --> 03:30.440
+is the set of
+ write events it knows about.
+
+03:30.440 --> 03:33.480
+is the set of
+ write events it knows about.
+
+03:34.360 --> 03:38.040
+Now, we want to manipulate
+ these views from the logic.
+
+03:38.040 --> 03:41.800
+For that, we add new
+ kinds of assertions.
+
+03:41.800 --> 03:43.880
+The first new kind
+ of assertions is
+
+03:43.880 --> 03:46.880
+this "up-arrow U"
+ where U is a view,
+
+03:46.880 --> 03:49.960
+we pronounce it
+ as "we have seen U",
+
+03:49.960 --> 03:51.840
+and it means that
+ the current thread
+
+03:51.840 --> 03:53.960
+knows all writes in U.
+ So it is an assertion
+
+03:53.960 --> 03:57.440
+about the current view
+ of the thread.
+
+03:58.000 --> 04:00.800
+The second
+ new assertion is "P at U",
+
+04:00.800 --> 04:03.080
+where P
+ is an assertion
+
+04:03.080 --> 04:07.040
+and U is a view.
+ It means that P holds in the eyes
+
+04:07.040 --> 04:09.920
+of any thread
+ which has seen U.
+
+04:09.920 --> 04:13.280
+For example, let's say
+ that P relies
+
+04:13.280 --> 04:15.520
+on knowing
+ a given write event.
+
+04:15.520 --> 04:19.200
+Then it requires the current view
+ to contain that write event.
+
+04:19.200 --> 04:22.800
+So asserting P is subjective.
+
+04:22.800 --> 04:25.240
+But instead we're going to
+ say that whatever
+
+04:25.240 --> 04:27.760
+the current view is,
+ if it contains
+
+04:27.760 --> 04:31.160
+that write event,
+ then P holds.
+
+04:31.160 --> 04:35.240
+And by saying this, we do not
+ depend anymore on the current view.
+
+04:35.240 --> 04:39.320
+So saying this is objective,
+ even though P
+
+04:39.320 --> 04:42.240
+may be subjective.
+ And that's what
+
+04:42.240 --> 04:47.240
+"P at U" means when
+ U contains the given write event.
+
+04:49.840 --> 04:51.840
+So we can make
+ a subjective assertion objective
+
+04:51.840 --> 04:56.840
+by specifying the view
+ at which we see it.
+
+04:58.560 --> 05:00.720
+And why is it
+ interesting?
+
+05:00.720 --> 05:04.080
+Because these new
+ assertions are complementary.
+
+05:04.080 --> 05:08.080
+More precisely, in our logic,
+ any assertion P
+
+05:08.080 --> 05:10.160
+is equivalent
+
+05:10.160 --> 05:12.960
+to an objective assertion
+ of the form "P at U",
+
+05:12.960 --> 05:16.320
+to an objective assertion
+ of the form "P at U",
+
+05:16.320 --> 05:19.480
+and a assertion of the form,
+ "up-arrow U",
+
+05:19.480 --> 05:23.640
+for some view U.
+ This shows in particular
+
+05:23.640 --> 05:27.320
+that view assertions
+ of the form "up-arrow U"
+
+05:27.320 --> 05:29.760
+capture all the
+ subjectivity of the
+
+05:29.760 --> 05:33.240
+weak memory.
+
+05:33.760 --> 05:37.960
+And this decomposition will allow us
+ to share subjective assertions
+
+05:37.960 --> 05:40.320
+between threads, by using
+ a different mechanism for each part.
+
+05:43.440 --> 05:45.480
+The first part, "P at U",
+
+05:45.480 --> 05:46.320
+is objective
+
+05:46.320 --> 05:48.720
+so it can be shared via an invariant,
+
+05:48.720 --> 05:50.440
+so it can be shared via an invariant,
+
+05:50.440 --> 05:54.600
+just as in usual
+ concurrent separation logics.
+
+05:54.600 --> 05:56.080
+Regarding the second part,
+
+05:56.080 --> 05:58.080
+sharing "up-arrow U"
+
+05:58.080 --> 05:59.960
+means exchanging information
+
+05:59.960 --> 06:02.200
+about write events between threads.
+
+06:02.200 --> 06:03.040
+So in other words,
+
+06:03.040 --> 06:05.320
+it means synchronizing.
+
+06:05.320 --> 06:09.200
+So we will rely on some form
+ of thread synchronization
+
+06:09.200 --> 06:11.720
+that is provided by the memory model.
+
+06:14.320 --> 06:16.640
+That was the main idea of this talk.
+
+06:16.640 --> 06:20.560
+Now I show you what is
+ in our program logic,
+
+06:20.560 --> 06:22.440
+to reason about programs and memory,
+
+06:22.440 --> 06:24.200
+and I'll start with the simplest thing,
+
+06:24.200 --> 06:26.520
+which are atomic locations.
+
+06:27.680 --> 06:28.880
+For atomic locations,
+
+06:28.880 --> 06:31.520
+we have an usual-looking
+ points-to assertion,
+
+06:32.920 --> 06:34.680
+"atomic x points to v",
+
+06:34.680 --> 06:36.160
+which means that we own the
+
+06:36.160 --> 06:38.080
+atomic location x,
+
+06:38.080 --> 06:39.600
+and x stores the value v.
+
+06:41.400 --> 06:43.680
+We are able to say such a thing,
+
+06:43.680 --> 06:46.680
+because atomic locations
+ in Multicore OCaml
+
+06:46.680 --> 06:49.040
+behave in a sequentially consistent way.
+
+06:49.040 --> 06:50.120
+At any given time,
+
+06:50.120 --> 06:52.920
+all threads see the same value for x.
+
+06:54.480 --> 06:55.840
+In particular,
+
+06:55.840 --> 06:57.520
+this assertion is objective,
+
+06:58.480 --> 07:00.320
+then it should come as no surprise
+
+07:00.320 --> 07:03.000
+that atomic accesses obey the usual
+
+07:03.000 --> 07:06.360
+Hoare triples, both reads and writes.
+
+07:09.280 --> 07:10.760
+Where things become interesting,
+
+07:10.760 --> 07:12.800
+is for non-atomic locations.
+
+07:12.800 --> 07:14.520
+The non-atomic locations of Multicore
+
+07:14.520 --> 07:16.960
+OCaml have a relaxed behavior.
+
+07:18.040 --> 07:21.280
+In our logic we still have
+ an assertion "x points to v",
+
+07:21.280 --> 07:23.440
+with its meaning differ slightly.
+
+07:23.440 --> 07:25.200
+It still asserts the ownership of x,
+
+07:25.200 --> 07:26.800
+but instead of saying that
+
+07:27.640 --> 07:29.160
+the value of x is v,
+
+07:29.160 --> 07:32.360
+it says that we have seen
+ the latest write to x,
+
+07:32.360 --> 07:34.040
+and this write bears the value v.
+
+07:35.320 --> 07:38.880
+And this is the typical
+ subjective assertion.
+
+07:38.880 --> 07:40.360
+There is no such a thing as
+
+07:40.360 --> 07:42.240
+the global value of x,
+
+07:42.240 --> 07:45.360
+because different threads
+ do not necessarily know
+
+07:45.360 --> 07:46.800
+about the same writes to x.
+
+07:49.840 --> 07:52.720
+What is really nice with
+ this points-to assertion,
+
+07:52.720 --> 07:55.240
+is that it also obeys the standard rules.
+
+07:55.240 --> 07:58.920
+So we have a simple looking assertion
+
+07:58.920 --> 08:00.720
+that behaves in a natural way,
+
+08:00.720 --> 08:03.760
+but the price for it
+ is that the assertion
+
+08:03.760 --> 08:08.040
+hides more behind the scenes
+ and it is subjective.
+
+08:08.040 --> 08:09.240
+So we cannot share it
+
+08:09.240 --> 08:11.480
+only by using an invariant.
+
+08:13.480 --> 08:15.440
+So let's see how
+ we can share it nonetheless,
+
+08:15.440 --> 08:17.320
+and for that,
+
+08:17.320 --> 08:19.520
+let's consider that typical code pattern
+
+08:19.520 --> 08:20.920
+which is called a spin lock.
+
+08:22.600 --> 08:24.320
+Let's say we have several threads,
+
+08:24.320 --> 08:26.200
+that want to access the same resource,
+
+08:26.200 --> 08:29.440
+such as a single non-atomic location.
+
+08:29.440 --> 08:32.000
+Then we can use an atomic
+ flag to guard that resource:
+
+08:32.000 --> 08:33.200
+when the flag is true,
+
+08:33.200 --> 08:34.360
+the resource is taken,
+
+08:34.360 --> 08:35.920
+and if you want to acquire it,
+
+08:35.920 --> 08:38.640
+you need to wait for
+ it to become available.
+
+08:38.640 --> 08:40.520
+Now from a logical point of view,
+
+08:40.520 --> 08:43.920
+the lock can be seen as
+ guarding an assertion P,
+
+08:43.920 --> 08:45.080
+which may be subjective,
+
+08:45.080 --> 08:45.920
+for example,
+
+08:45.920 --> 08:47.720
+it may be a non-atomic
+ points-to assertion,
+
+08:47.720 --> 08:49.680
+as evoked just before.
+
+08:49.680 --> 08:51.760
+The first thread has P
+
+08:51.760 --> 08:53.520
+before releasing the lock.
+
+08:53.520 --> 08:57.400
+The second thread will get P
+ after it has acquired the lock.
+
+08:57.400 --> 08:59.920
+So we want P to be transferred
+
+08:59.920 --> 09:02.760
+from the first thread to the second one.
+
+09:04.120 --> 09:05.480
+To see how that works,
+
+09:05.480 --> 09:06.920
+let's consider
+
+09:06.920 --> 09:09.640
+only the compare-and-set
+ operation that succeeds,
+
+09:09.640 --> 09:12.840
+because that's when the transfer happens.
+
+09:14.400 --> 09:17.280
+As we've seen we decompose
+ P into an objective part
+
+09:17.280 --> 09:18.600
+and a subjective part,
+
+09:18.600 --> 09:20.360
+so that we can transfer each part.
+
+09:21.280 --> 09:24.680
+The first part, "P at U", is objective.
+
+09:24.680 --> 09:27.440
+So it can be transferred
+ using an invariant as usual.
+
+09:27.440 --> 09:29.040
+So we get rid of it.
+
+09:29.040 --> 09:31.120
+So now we are down to the problem
+
+09:31.120 --> 09:33.200
+of transferring a view assertion.
+
+09:35.160 --> 09:36.040
+As I said before,
+
+09:36.040 --> 09:38.640
+we need some form of
+ synchronization and, here,
+
+09:38.640 --> 09:40.000
+What Multicore OCaml gives us
+
+09:40.000 --> 09:42.160
+is a happens-before relationship
+
+09:42.160 --> 09:45.520
+from the release write
+ to the acquire read.
+
+09:45.520 --> 09:48.440
+So instead of adding
+ new primitives to the language,
+
+09:48.440 --> 09:50.080
+Multicore OCaml made the choice
+
+09:50.080 --> 09:53.360
+of performing release/acquire
+ synchronization on atomic access.
+
+09:55.320 --> 09:58.040
+We need to reflect
+ this in our program logic,
+
+09:58.040 --> 09:59.720
+and we do so
+
+09:59.720 --> 10:01.920
+by extending the atomic
+ points-to predicate.
+
+10:04.280 --> 10:07.760
+So recall that "atomic points to v"
+
+10:07.760 --> 10:09.760
+means that x stores the value v.
+
+10:11.560 --> 10:13.200
+We now extend this assertion,
+
+10:13.200 --> 10:16.080
+so that an atomic location stores the pair
+
+10:16.960 --> 10:18.160
+of a value and a view.
+
+10:20.600 --> 10:23.000
+So accesses still behave the same
+
+10:23.000 --> 10:25.040
+with respect to the value,
+
+10:25.960 --> 10:29.920
+but they also perform a
+ release/acquire synchronization
+
+10:29.920 --> 10:30.760
+on the view.
+
+10:32.400 --> 10:33.920
+So when writing,
+
+10:33.920 --> 10:36.200
+we push into the shared location,
+
+10:36.200 --> 10:38.960
+any information we have in the local view.
+
+10:38.960 --> 10:41.200
+So that's a release write.
+
+10:41.200 --> 10:42.400
+And conversely,
+
+10:42.400 --> 10:46.440
+when reading, we pull into our local view
+
+10:46.440 --> 10:49.480
+any information stored
+ in the shared location.
+
+10:49.480 --> 10:50.720
+So that's an acquire read.
+
+10:53.000 --> 10:54.040
+And with this in mind,
+
+10:54.040 --> 10:55.680
+let's come back to our spin lock.
+
+10:57.320 --> 10:58.640
+As we have seen before,
+
+10:58.640 --> 11:01.080
+the spin lock has two operations,
+
+11:01.080 --> 11:02.960
+release and acquire.
+
+11:02.960 --> 11:05.880
+In the interface it guards an assertion P.
+
+11:05.880 --> 11:08.200
+We give the spin lock a specification,
+
+11:08.200 --> 11:10.800
+which holds under some invariant.
+
+11:10.800 --> 11:11.880
+And now,
+
+11:11.880 --> 11:16.080
+to prove this specification in
+ the usual separation logic,
+
+11:17.160 --> 11:18.640
+with sequential consistency,
+
+11:19.640 --> 11:21.440
+we state an invariant like this:
+
+11:22.400 --> 11:25.560
+we are either locked or unlocked,
+
+11:25.560 --> 11:26.840
+and in the latter case
+
+11:26.840 --> 11:29.760
+the invariant itself holds the assertion P.
+
+11:32.400 --> 11:35.920
+Now in our program
+ logic with weak memory,
+
+11:35.920 --> 11:37.560
+P may be subjective,
+
+11:37.560 --> 11:41.000
+but everything in the
+ invariant has to be objective.
+
+11:41.000 --> 11:45.840
+So the invariant we
+ state instead is that one.
+
+11:48.280 --> 11:49.520
+In fact,
+
+11:49.520 --> 11:52.600
+it is the same as in
+ usual separation logic,
+
+11:52.600 --> 11:54.000
+but we add views.
+
+11:54.000 --> 11:55.920
+To remain objective,
+
+11:55.920 --> 11:57.240
+we make it explicit
+
+11:57.240 --> 12:00.120
+at which view we have P,
+
+12:00.120 --> 12:02.280
+and we say that it is the same view
+
+12:02.280 --> 12:04.000
+as is stored in lk.
+
+12:04.920 --> 12:06.240
+In other words,
+
+12:06.240 --> 12:09.560
+P holds in the eyes of whoever
+
+12:09.560 --> 12:11.120
+last released the lock.
+
+12:13.440 --> 12:16.560
+So that "P at U" in the invariant
+
+12:16.560 --> 12:18.360
+obviously allows to transfer
+
+12:18.360 --> 12:20.800
+the objective part of P,
+
+12:20.800 --> 12:22.520
+while the atomic location itself
+
+12:22.520 --> 12:26.360
+allows to transfer the
+ subjective part of P.
+
+12:31.480 --> 12:34.520
+So that was the proof of the spin lock.
+
+12:34.520 --> 12:35.960
+And in addition to this example,
+
+12:35.960 --> 12:38.440
+we did more case studies with
+ different kinds of locks
+
+12:38.440 --> 12:41.600
+and algorithms for mutual exclusion,
+
+12:41.600 --> 12:42.960
+and in all of these examples,
+
+12:42.960 --> 12:46.280
+we have been experiencing the same pattern
+
+12:46.280 --> 12:51.400
+of sprinkling views over our invariants.
+
+12:51.400 --> 12:54.720
+So a general method
+ for proving correctness
+
+12:54.720 --> 12:57.000
+of a concurrent data structure,
+
+12:57.000 --> 12:58.880
+is to start by reasoning
+
+12:58.880 --> 13:01.560
+as if we had a sequentially
+ consistent model,
+
+13:01.560 --> 13:04.240
+express the invariant in the usual
+
+13:04.240 --> 13:06.040
+concurrent separation logic.
+
+13:06.040 --> 13:10.000
+Then identify where
+ synchronization happens,
+
+13:10.000 --> 13:12.080
+and make it explicit by adding views.
+
+13:16.080 --> 13:18.080
+To sum up I have presented
+ a program logic
+
+13:18.080 --> 13:19.880
+for Multicore OCaml,
+
+13:19.880 --> 13:22.720
+based on isolating
+ subjectivity into views.
+
+13:22.720 --> 13:25.640
+I argued that this logic enables concise
+
+13:25.640 --> 13:29.120
+and natural reasoning on
+ how threads synchronize.
+
+13:30.120 --> 13:31.360
+There is more in the paper,
+
+13:31.360 --> 13:34.720
+namely how the logic is realized,
+
+13:34.720 --> 13:36.920
+by building on top of a lower-level logic.
+
+13:38.760 --> 13:40.880
+And we also have more case studies.
+
+13:42.480 --> 13:45.240
+This entire work is mechanized
+ in the Coq proof assistant,
+
+13:45.240 --> 13:48.120
+using the Iris separation logic framework.
+
+13:48.120 --> 13:50.680
+So we have a verified proof of soundness,
+
+13:50.680 --> 13:53.760
+and a toy language with
+ which we can write programs
+
+13:53.760 --> 13:57.120
+and prove them correct using
+ our program logic.
+
+13:58.640 --> 13:59.800
+And in the future,
+
+13:59.800 --> 14:02.680
+we would like to verify
+ even more data structures.
+
+14:02.680 --> 14:06.080
+Also we would like to
+ investigate data races,
+
+14:06.080 --> 14:08.880
+because data races are currently
+ not supported in logic,
+
+14:10.240 --> 14:13.480
+even though the underlying memory model
+
+14:13.480 --> 14:15.640
+gives a few guarantees about them.
+
+14:17.000 --> 14:18.280
+Thank you for your attention,
+
+14:18.280 --> 14:20.240
+and if you have seen all previous slides,
+
+14:20.240 --> 14:22.840
+you hold the right to
+ ask questions now.
