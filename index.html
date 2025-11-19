@@ -8,23 +8,8 @@
 	     filesystem, but this can still be useful: -->
 	<meta http-equiv="Last-Modified" content="Sat, 7 May 2022 18:00:00 CET" />
 	<title>Glen Mével</title>
-	<style>
-		blockquote {
-			text-align: justify;
-			max-width: 50em;
-		}
-		span.email-string {
-			font-family: monospace;
-			color: #800000;
-			background-color: white;
-		}
-		span.email-var {
-			font-family: serif;
-			font-style: italic;
-			color: black;
-			background-color: white;
-		}
-	</style>
+	<link rel="stylesheet" type="text/css" href="style.css"/>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700">
 </head>
 
 <body>
@@ -33,10 +18,12 @@
 
 	<p>
 		Contact:
-		(λ <span class="email-var">x</span> <span class="email-var">y</span> .
-		<span class="email-string">“<span class="email-var">x</span>.<span class="email-var">y</span>@crans.org”</span>)
-		<span class="email-string">“glen”</span>
-		<span class="email-string">“mevel”</span>.
+		<span class="email">
+			(λ <span class="email-var">x</span> <span class="email-var">y</span> .
+			<span class="email-string">“<span class="email-var">x</span>.<span class="email-var">y</span>@crans.org”</span>)
+			<span class="email-string">“glen”</span>
+			<span class="email-string">“mevel”</span>
+		</span>
 	</p>
 
 	<p>
@@ -55,9 +42,9 @@
 		<a href="../~fpottier/">François Pottier</a> (Inria)
 		and <a href="https://jhjourdan.mketjh.fr">Jacques‐Henri Jourdan</a>
 		(LMF),
-		we aim at establishing a program logic for proving correctness of
+		we aimed at establishing a program logic for proving correctness of
 		<a href="http://ocamllabs.io/doc/multicore.html">Multicore OCaml</a>
-		programs. For that, we are using the
+		programs. For that, we used the
 		<a href="https://coq.inria.fr">Coq</a> proof assistant and the
 		<a href="https://iris-project.org">Iris</a> separation logic.
 	</p>
